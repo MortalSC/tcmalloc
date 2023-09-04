@@ -1,23 +1,32 @@
-#pragma once
+#ifndef _THREAD_CACHE_H_
+#define _THREAD_CACHE_H_
 
 #include "Common.h"
 
-class ThreadCache
-{
+
+
+class ThreadCache {
 public:
-    // 申请和释放内存对象
-    // 参数：申请的对象大小
-    void *Allocate(size_t size);
-    // 参数：释放的目标地址 + 释放的空间大小
-    void Deallocate(void *ptr, size_t size);
+	// 内存管理：申请和释放空间
+	/*
+	*	内存分配：
+	*	param:
+	*		需要的内存大小
+	*/
+	void* Allocate(size_t size);
 
-    void FetchFromCentralCache();
-
+	/*
+	*	内存回收：
+	*	param:
+	*		被释放的地址
+	*		释放的大小
+	*/
+	void Deallocate(void* free_ptr, size_t size);
 
 private:
-    FreeList _freeLists[NFREE_LISTS];
+	/* 自由链表集合 */
+	FreeList _freeListSet[];
 };
 
-// static _declspec(thread) ThreadCache* pTSLThreadCache = nullptr;
-// TLS thread local storage
-static _declspec(thread) ThreadCache* pTLSThreadCache = nullptr;
+
+#endif 
