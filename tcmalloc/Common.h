@@ -1,17 +1,28 @@
-#pragma once 
+#pragma once
 
 #include <iostream>
 #include <cassert>
 #include <vector>
+#include <thread>
+#include <mutex>
+#include <cstdlib>
 
 
 /* ThreadCache 的最大限制 */
 static const size_t MAX_BYTES = 256 * 1024;
+/* 哈希映射桶的个数 */
+static const size_t MAXBLUCKET = 208;
+
+#ifdef _WIN32
+typedef size_t PAGE_ID;
+#elif _WIN64
+typedef unsigned long long PAGE_ID;
+#endif
 
 /*
 *	作用：获取给定对象的地址！
 */
-void*& GetNextObj(void* obj) {
+static void*& GetNextObj(void* obj) {
 	return *(void**)obj;
 }
 
@@ -32,14 +43,36 @@ public:
 		_freeList = obj;
 	}
 	/*
+	*	支持范围（串）插入
+	*/
+	void PushRange(void* start, void* end) {
+		GetNextObj(end) = _freeList;
+		_freeList = start;
+	}
+
+	/*
 	*	指定方式：头删法
 	*/
-	void Pop() {
+	void* Pop() {
 		void* obj = _freeList;
 		_freeList = GetNextObj(obj);
+		return _freeList;
 	}
+
+	/*
+	*	判断自由链表是否为空！
+	*/
+	bool Empty() {
+		return _freeList == nullptr;
+	}
+
+	size_t& MaxSize() {
+		return _maxSize;
+	}
+
 private:
-	void* _freeList;
+	void* _freeList = nullptr;
+	size_t _maxSize = 1;					// 用于限制向centralcache申请时，慢申请防止分配过多而浪费
 };
 
 
@@ -65,9 +98,9 @@ private:
 class SizeClass {
 public:
 	/* 
-	*	向上对齐 
+	*	向上对齐 ，返回分配的空间大小
 	*/
-	size_t RoundUp(size_t size) {
+	static inline size_t RoundUp(size_t size) {
 		if (size <= 128) {
 			// 区间：[1,128]	
 			return _RoundUp(size, 8);
@@ -95,9 +128,60 @@ public:
 		}
 	}
 
+	/*
+	*	计算返回：空间对应的映射桶【计算映射的哪一个自由链表桶】
+	*	定位思路：bytes 对应每个区间中映射桶 + 前一个区间桶的个数 = 总体中桶的映射关系 
+	*/
+	// 
+	static inline size_t Index(size_t bytes)
+	{
+		assert(bytes <= MAX_BYTES);
+		// 每个区间有多少个链
+		static int group_array[4] = { 16, 56, 56, 56 };
+		if (bytes <= 128) {
+			return _Index(bytes, 3);
+		}
+		else if (bytes <= 1024) {
+			return _Index(bytes - 128, 4) + group_array[0];
+		}
+		else if (bytes <= 8 * 1024) {
+			return _Index(bytes - 1024, 7) + group_array[1] + group_array[0];
+		}
+		else if (bytes <= 64 * 1024) {
+			return _Index(bytes - 8 * 1024, 10) + group_array[2] + group_array[1]
+				+ group_array[0];
+		}
+		else if (bytes <= 256 * 1024) {
+			return _Index(bytes - 64 * 1024, 13) + group_array[3] +
+				group_array[2] + group_array[1] + group_array[0];
+		}
+		else {
+			assert(false);
+		}
+		return -1;
+	}
+
+	// 一次从中心缓存获取多少个
+	static size_t NumMoveSize(size_t size)
+	{
+		//if (size == 0)
+		//	return 0;
+		assert(size);
+		// [2, 512]，一次批量移动多少个对象的(慢启动)上限值
+		// 小对象一次批量上限高
+		// 大对象一次批量上限低
+		int num = MAX_BYTES / size;		// 256 * 1024 / 8 = 32768
+		if (num < 2)
+			num = 2;
+		if (num > 512)
+			num = 512;
+		return num;
+	}
+
+
 private:
 	/*
-	*	作用：返回对齐的映射下标
+	*	作用：返回分配的空间大小
 	*/
 #if 0
 	size_t _RoundUp(size_t size, int align_standard) {
@@ -119,4 +203,69 @@ private:
 	static inline size_t _RoundUp(size_t bytes, size_t align) {
 		return ((bytes + align - 1) & ~(align - 1));
 	}
+
+	/*
+	*	作用：计算映射的哪一个自由链表桶
+	*	param:
+	*		bytes：申请的目标空间大小
+	*		align_shift：对齐标准单元 [ 8、16、··· ]的二进制 1 的位置
+				8	=> 3
+	*			16	=> 4
+	*			128 => 7
+	*			···
+	*/
+	static inline size_t _Index(size_t bytes, size_t align_shift)
+	{
+		return ((bytes + (1 << align_shift) - 1) >> align_shift) - 1;
+	}
+};
+
+
+/*
+*	管理多个连续页的大块内存跨度结构
+*/
+struct Span { 
+	
+	size_t _page_id;		// 大块内存的起始页号
+	size_t _n;				// 页的数量
+
+	Span* _next;			// 双向自由链表的指针
+	Span* _prev;			// 双向自由链表的指针
+
+	size_t _useCount;		// 计数：统计切好并分配个threadcache的个数
+	void* _freeList = nullptr;		// 切好的小内存的自由链表
+
+};
+
+// 含哨兵头结点的双向循环链表
+class SpanList {
+public:
+	SpanList() {
+		_head = new Span;
+		_head->_next = _head;
+		_head->_prev = _head;
+	}
+
+	void Insert(Span* pos, Span* newSpan) {
+		assert(pos);
+		assert(newSpan);
+		Span* prev = pos->_prev;
+		prev->_next = newSpan;
+		newSpan->_prev = prev;
+		newSpan->_next = pos;
+		pos->_prev = newSpan;
+	}
+
+	void Erase(Span* pos) {
+		assert(pos);
+		assert(pos != _head);
+		Span* prev = pos->_prev;
+		Span* next = pos->_next;
+		prev->_next = next;
+		next->_prev = prev;
+	}
+private:
+	Span* _head;		// 哨兵头结点
+public:
+	std::mutex _mtx;	// 桶锁
 };
