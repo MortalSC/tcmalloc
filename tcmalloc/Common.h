@@ -1,23 +1,49 @@
-#pragma once
+#pragma once 
 
 #include <iostream>
 #include <cassert>
 #include <vector>
 #include <thread>
 #include <mutex>
-#include <cstdlib>
+#include <unordered_map>
+#include <windows.h>
+
+//#ifdef _WIN32
+//
+//#else
+//
+//#endif // _WIN32
+
 
 
 /* ThreadCache 的最大限制 */
 static const size_t MAX_BYTES = 256 * 1024;
 /* 哈希映射桶的个数 */
 static const size_t MAXBLUCKET = 208;
+/*  */
+static const size_t NPAGES = 129;
+/*  */
+static const size_t PAGE_SHIFT = 13;
 
 #ifdef _WIN32
 typedef size_t PAGE_ID;
 #elif _WIN64
 typedef unsigned long long PAGE_ID;
 #endif
+
+/*
+*	直接在堆上申请内存
+*/
+inline static void* SystemAlloc(size_t kpage) {
+#ifdef _WIN32
+	void* ptr = VirtualAlloc(0, kpage << 13, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+#else
+
+#endif
+	if (ptr == nullptr)
+		throw std::bad_alloc();
+	return ptr;
+}
 
 /*
 *	作用：获取给定对象的地址！
@@ -41,13 +67,15 @@ public:
 		//*(void**)obj = _freeList;				// 对二级指针进行解引用即可获取指针在对应环境OS下的大小！
 		GetNextObj(obj) = _freeList;
 		_freeList = obj;
+		++_size;
 	}
 	/*
 	*	支持范围（串）插入
 	*/
-	void PushRange(void* start, void* end) {
+	void PushRange(void* start, void* end, size_t n) {
 		GetNextObj(end) = _freeList;
 		_freeList = start;
+		_size += n;
 	}
 
 	/*
@@ -56,7 +84,22 @@ public:
 	void* Pop() {
 		void* obj = _freeList;
 		_freeList = GetNextObj(obj);
+		--_size;
 		return _freeList;
+	}
+
+	/*
+	*	作用：范围式删除！
+	*/
+	void PopRange(void*& start, void*& end, size_t n) {
+		assert(n >= _size);
+		start = _freeList;
+		for (size_t i = 0; i < n - 1; i++) {
+			end = GetNextObj(end);
+		}
+		_freeList = GetNextObj(end);
+		GetNextObj(end) = nullptr;
+		_size -= n;
 	}
 
 	/*
@@ -70,9 +113,12 @@ public:
 		return _maxSize;
 	}
 
+	size_t GetSize() { return _size; }
+
 private:
 	void* _freeList = nullptr;
 	size_t _maxSize = 1;					// 用于限制向centralcache申请时，慢申请防止分配过多而浪费
+	size_t _size;							// 记录链表载有的结点个数
 };
 
 
@@ -178,6 +224,16 @@ public:
 		return num;
 	}
 
+	/*
+	*	
+	*/
+	static size_t NumMovePage(size_t size) {
+		size_t num = NumMoveSize(size);
+		size_t npage = num * size;
+		npage >>= PAGE_SHIFT;
+		if (npage == 0) npage = 1;
+		return npage;
+	}
 
 private:
 	/*
@@ -227,7 +283,7 @@ private:
 struct Span { 
 	
 	size_t _page_id;		// 大块内存的起始页号
-	size_t _n;				// 页的数量
+	size_t _n;				// 某块span页中的剩余单位数量
 
 	Span* _next;			// 双向自由链表的指针
 	Span* _prev;			// 双向自由链表的指针
@@ -235,6 +291,7 @@ struct Span {
 	size_t _useCount;		// 计数：统计切好并分配个threadcache的个数
 	void* _freeList = nullptr;		// 切好的小内存的自由链表
 
+	bool isUse = false;
 };
 
 // 含哨兵头结点的双向循环链表
@@ -263,6 +320,28 @@ public:
 		Span* next = pos->_next;
 		prev->_next = next;
 		next->_prev = prev;
+	}
+
+	Span* Begin() {
+		return _head->_next;
+	}
+
+	Span* End() {
+		return _head;
+	}
+
+	void PushFront(Span* span) {
+		Insert(Begin(), span);
+	}
+
+	Span* PopFront() {
+		Span* front = _head->_next;
+		Erase(front);
+		return front;
+	}
+
+	bool Empty() {
+		return _head->_next == _head;
 	}
 private:
 	Span* _head;		// 哨兵头结点
