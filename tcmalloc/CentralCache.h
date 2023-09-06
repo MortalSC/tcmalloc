@@ -16,6 +16,8 @@ public:
 	// 从中心缓存获取一定数量的内存对象给threadcache
 	size_t FetchRangeObj(void*& start, void*& end, size_t n, size_t size);
 
+	// 将一定数量的内存对象释放到span 跨度
+	void ReleaseListToSpans(void* start, size_t size);
 
 
 private:
