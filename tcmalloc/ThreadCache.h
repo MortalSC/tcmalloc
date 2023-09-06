@@ -29,6 +29,11 @@ public:
 	*/
 	void* FetchFromContralCache(size_t index, size_t size);
 
+	/*
+	*	处理归还内存中出现的内存过多，取出一部分向下递交！
+	*/
+	void ListTooLong(FreeList& list, size_t size);
+
 private:
 	/* 自由链表集合 */
 	FreeList _freeListSet[MAXBLUCKET];
