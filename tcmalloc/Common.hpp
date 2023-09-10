@@ -45,7 +45,6 @@ inline static void* SystemAlloc(size_t kpage)
 	void* ptr = VirtualAlloc(0, kpage << 13, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 #else
 	// linux下brk mmap等
-	
 #endif
 
 	if (ptr == nullptr)
@@ -71,6 +70,7 @@ public:
 		GetNextObj(obj) = _freeList;
 		// _freeList回指，完成头插
 		_freeList = obj;
+		_size += 1;
 	}
 
 	/*
@@ -94,6 +94,8 @@ public:
 		void* obj = _freeList;
 		// 实现指向第二个结点
 		_freeList = GetNextObj(obj);
+		_size -= 1;
+
 		return obj;
 	}
 	/*
@@ -133,7 +135,12 @@ public:
 		return _maxSize;
 	}
 
-
+	/*
+	*	获取当前链表长度
+	*/
+	size_t GetSize() {
+		return _size;
+	}
 
 private:
 	void* _freeList = nullptr;
