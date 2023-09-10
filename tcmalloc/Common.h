@@ -6,13 +6,13 @@
 #include <thread>
 #include <mutex>
 #include <unordered_map>
-#include <windows.h>
+#include <unistd.h>
 
-//#ifdef _WIN32
-//
-//#else
-//
-//#endif // _WIN32
+#ifdef _WIN32
+#include <windows.h>
+#else
+
+#endif // _WIN32
 
 
 
@@ -38,8 +38,14 @@ inline static void* SystemAlloc(size_t kpage) {
 #ifdef _WIN32
 	void* ptr = VirtualAlloc(0, kpage << 13, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 #else
-
+    void* ptr = nullptr;
+	if(kpage <= 128*1024){
+		void* ptr = (void*)sbrk(kpage);
+	}else{
+		// ···
+	}
 #endif
+
 	if (ptr == nullptr)
 		throw std::bad_alloc();
 	return ptr;
