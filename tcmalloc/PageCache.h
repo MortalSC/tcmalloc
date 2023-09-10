@@ -2,7 +2,7 @@
 
 #include "Common.hpp"
 
-// å•ä¾‹æ¨¡å¼ï¼šå…¨å±€åªè¦ä¸€ä¸ª PageCacheï¼
+// µ¥ÀıÄ£Ê½£ºÈ«¾ÖÖ»ÒªÒ»¸ö PageCache£¡
 class PageCache {
 public:
 	static PageCache* GetInstance() {
@@ -10,18 +10,26 @@ public:
 	}
 
 	/*
-	*	å½“CentralCacheä¸­å¯¹åº”çš„spanæ¡¶ä¸­æ²¡æœ‰å¯ç”¨spanï¼ˆå¯ç”¨ç©ºé—´ï¼‰æ—¶ï¼ŒPageCacheåˆ†é…ä¸€ä¸ªæ–°çš„ï¼
+	*	µ±CentralCacheÖĞ¶ÔÓ¦µÄspanÍ°ÖĞÃ»ÓĞ¿ÉÓÃspan£¨¿ÉÓÃ¿Õ¼ä£©Ê±£¬PageCache·ÖÅäÒ»¸öĞÂµÄ£¡
 	*	param:
-	*		npageï¼šåˆ†å‰²çš„é¡µæ•°
-	*	ä½œç”¨ï¼šç»™CentralCacheåˆ†é…ä¸€ä¸ªé¡µçš„span
+	*		npage£º·Ö¸îµÄÒ³Êı
+	*	×÷ÓÃ£º¸øCentralCache·ÖÅäÒ»¸öÒ³µÄspan
 	*/
 	Span* GetNewPage(size_t npage);
 
+	/*
+	*	²éÕÒ¹é»¹ÄÚ´æ¿éµÄÓ³ÉäÒ³¼¶Span
+	*/
+	Span* MapObjectToSpan(void* ptr);
 
+	/*
+	*	¶Ô¹é»¹µÄSpan½øĞĞÒ³¿éÕûÀí
+	*/
+	void ReleaseSpanToPageCache(Span* span);
 private:
 	SpanList _spanListPage[PAGENUMS];
 
-	// æ„å»ºä¸€ä¸ªé¡µå·å’ŒSpanç»“æ„çš„æ˜ å°„ => ç”¨äºå†…å­˜å›æ”¶çš„é¡µåˆå¹¶ï¼
+	// ¹¹½¨Ò»¸öÒ³ºÅºÍSpan½á¹¹µÄÓ³Éä => ÓÃÓÚÄÚ´æ»ØÊÕµÄÒ³ºÏ²¢£¡
 	std::unordered_map<PAGE_ID, Span*> _idSpanMap;
 
 public:
