@@ -3,48 +3,48 @@
 PageCache PageCache::_Instan;
 
 /*
-*	ä½œç”¨ï¼šä»Žå¯ç”¨é¡µä¸­èŽ·å–å†…å­˜
+*	×÷ÓÃ£º´Ó¿ÉÓÃÒ³ÖÐ»ñÈ¡ÄÚ´æ
 */
 Span* PageCache::GetNewPage(size_t npage)
 {
 	assert(npage > 0 && npage < PAGENUMS);
 
-	// 1. åˆ¤æ–­æŒ‡å®šçš„é¡µä¸­æ˜¯å¦æœ‰å¯ç”¨å†…å­˜ï¼
-	// è‹¥æ²¡æœ‰ï¼Œåˆ™é¡ºåºæŸ¥çœ‹ä¸‹ä¸€é¡µç›´åˆ°é‡åˆ°éžç©ºé¡µ / æœ€åŽä¸€é¡µï¼ˆæ— å¯ç”¨å†…å­˜ï¼Œå‘å †ç”³è¯·ï¼‰
+	// 1. ÅÐ¶ÏÖ¸¶¨µÄÒ³ÖÐÊÇ·ñÓÐ¿ÉÓÃÄÚ´æ£¡
+	// ÈôÃ»ÓÐ£¬ÔòË³Ðò²é¿´ÏÂÒ»Ò³Ö±µ½Óöµ½·Ç¿ÕÒ³ / ×îºóÒ»Ò³£¨ÎÞ¿ÉÓÃÄÚ´æ£¬Ïò¶ÑÉêÇë£©
 	if (!_spanListPage[npage].Empty()) {
 		return _spanListPage->PopFront();
 	}
 
-	// 2. é¡ºåºæŸ¥çœ‹ä¸‹ä¸€é¡µç›´åˆ°é‡åˆ°éžç©ºé¡µ / æœ€åŽä¸€é¡µï¼ˆæ— å¯ç”¨å†…å­˜ï¼Œå‘å †ç”³è¯·ï¼‰
+	// 2. Ë³Ðò²é¿´ÏÂÒ»Ò³Ö±µ½Óöµ½·Ç¿ÕÒ³ / ×îºóÒ»Ò³£¨ÎÞ¿ÉÓÃÄÚ´æ£¬Ïò¶ÑÉêÇë£©
 	for (size_t i = npage + 1; i < PAGENUMS; i++) {
 		if (!_spanListPage[i].Empty()) {
-			// é‡åˆ°éžç©ºé¡µï¼
+			// Óöµ½·Ç¿ÕÒ³£¡
 			
-			// é¡µä¸Šçš„å†…å­˜æ“ä½œè§„åˆ™ï¼šè¯¥é¡µåˆ†æˆä¸¤éƒ¨åˆ†ï¼š
-			// ç¬¬ä¸€éƒ¨åˆ†ï¼šç”³è¯·å¯¹è±¡æ—¶éœ€æ±‚çš„é¡µå¤§å° + å‰©ä½™å¤§å°ï¼ˆå‘å‰æŒ‚åœ¨åˆ°PageCacheä¸­çš„ç‰¹å®šé¡µä¸Šï¼‰
-			Span* prevSpan = _spanListPage[i].PopFront();		// èŽ·å–åˆ°é¡µä¸­å†…å­˜å—
+			// Ò³ÉÏµÄÄÚ´æ²Ù×÷¹æÔò£º¸ÃÒ³·Ö³ÉÁ½²¿·Ö£º
+			// µÚÒ»²¿·Ö£ºÉêÇë¶ÔÏóÊ±ÐèÇóµÄÒ³´óÐ¡ + Ê£Óà´óÐ¡£¨ÏòÇ°¹ÒÔÚµ½PageCacheÖÐµÄÌØ¶¨Ò³ÉÏ£©
+			Span* prevSpan = _spanListPage[i].PopFront();		// »ñÈ¡µ½Ò³ÖÐÄÚ´æ¿é
 			Span* kSpan = new Span;
 
-			// åœ¨prevSpançš„å¤´éƒ¨åˆ‡ä¸€ä¸ª npage é¡µä¸‹æ¥
-			// npage é¡µ npage è¿”å›ž
-			// prevSpanå†æŒ‚åˆ°å¯¹åº”æ˜ å°„çš„ä½ç½®
+			// ÔÚprevSpanµÄÍ·²¿ÇÐÒ»¸ö npage Ò³ÏÂÀ´
+			// npage Ò³ npage ·µ»Ø
+			// prevSpanÔÙ¹Òµ½¶ÔÓ¦Ó³ÉäµÄÎ»ÖÃ
 
-			// èŽ·å–åˆ°é¡µ ID
-			kSpan->_pageID = prevSpan->_pageID;					// æœ¬å±žäºŽåŒä¸€é¡µä¸­ï¼åˆ†å‰²åŽçš„æ–° span éœ€è¦è®°å½•é¡µid
-			kSpan->_n = npage;									// è®°å½•é¡µå·
+			// »ñÈ¡µ½Ò³ ID
+			kSpan->_pageID = prevSpan->_pageID;					// ±¾ÊôÓÚÍ¬Ò»Ò³ÖÐ£¡·Ö¸îºóµÄÐÂ span ÐèÒª¼ÇÂ¼Ò³id
+			kSpan->_n = npage;									// ¼ÇÂ¼Ò³ºÅ
 
-			prevSpan->_pageID += npage;							// ç›¸å¯¹é¡µidæ˜¯å‘ä¸Šé€’å¢žï¼å³ï¼šç¬¬128é¡µçš„é¡µidæ˜¯æœ€å°å€¼ï¼
+			prevSpan->_pageID += npage;							// Ïà¶ÔÒ³idÊÇÏòÉÏµÝÔö£¡¼´£ºµÚ128Ò³µÄÒ³idÊÇ×îÐ¡Öµ£¡
 			prevSpan->_n -= npage;
 
-			_spanListPage[prevSpan->_n].PushFront(prevSpan);	// å¤§é¡µï¼ˆç¬¬ä¸€éƒ¨åˆ†ï¼šå¯¹ä¸€å¼€å§‹çš„ç©ºé¡µè¿›è¡Œè¡¥å……ã€çœ‹å›¾æ›´å®¹æ˜“ç†è§£ã€‘ï¼‰
+			_spanListPage[prevSpan->_n].PushFront(prevSpan);	// ´óÒ³£¨µÚÒ»²¿·Ö£º¶ÔÒ»¿ªÊ¼µÄ¿ÕÒ³½øÐÐ²¹³ä¡¾¿´Í¼¸üÈÝÒ×Àí½â¡¿£©
 
-			// å­˜å‚¨ prevSpan çš„é¦–ä½é¡µå·è·Ÿ prevSpan æ˜ å°„ï¼Œæ–¹ä¾¿ page cache å›žæ”¶å†…å­˜æ—¶
-			// è¿›è¡Œçš„åˆå¹¶æŸ¥æ‰¾ï¼šå³è®°å½•äº†å¤§å—é¡µçš„åˆ†é…åŽ»å‘ï¼ˆä¾¿äºŽå›žæ”¶åˆå¹¶ï¼‰
+			// ´æ´¢ prevSpan µÄÊ×Î»Ò³ºÅ¸ú prevSpan Ó³Éä£¬·½±ã page cache »ØÊÕÄÚ´æÊ±
+			// ½øÐÐµÄºÏ²¢²éÕÒ£º¼´¼ÇÂ¼ÁË´ó¿éÒ³µÄ·ÖÅäÈ¥Ïò£¨±ãÓÚ»ØÊÕºÏ²¢£©
 			_idSpanMap[prevSpan->_pageID] = prevSpan;
 			_idSpanMap[prevSpan->_pageID + prevSpan->_n - 1] = prevSpan;
 
 
-			// å»ºç«‹idå’Œspançš„æ˜ å°„ï¼Œæ–¹ä¾¿central cacheå›žæ”¶å°å—å†…å­˜æ—¶ï¼ŒæŸ¥æ‰¾å¯¹åº”çš„span
+			// ½¨Á¢idºÍspanµÄÓ³Éä£¬·½±ãcentral cache»ØÊÕÐ¡¿éÄÚ´æÊ±£¬²éÕÒ¶ÔÓ¦µÄspan
 			for (PAGE_ID i = 0; i < kSpan->_n; ++i)
 			{
 				_idSpanMap[kSpan->_pageID + i] = kSpan;
@@ -54,14 +54,100 @@ Span* PageCache::GetNewPage(size_t npage)
 		}
 	}
 
-	// 3. åˆ°æ­¤ä½ç½®ï¼Œå³ï¼šç›´åˆ°æœ€åŽä¸€é¡µé¡µæ²¡æœ‰å¯ç”¨ç©ºé—´ï¼Œéœ€è¦å‘ç›¸åŒç”³è¯·æ–°çš„å¤§é¡µï¼šåŽ»æ‰¾å †è¦ä¸€ä¸ª128é¡µçš„span
+	// 3. µ½´ËÎ»ÖÃ£¬¼´£ºÖ±µ½×îºóÒ»Ò³Ò³Ã»ÓÐ¿ÉÓÃ¿Õ¼ä£¬ÐèÒªÏòÏàÍ¬ÉêÇëÐÂµÄ´óÒ³£ºÈ¥ÕÒ¶ÑÒªÒ»¸ö128Ò³µÄspan
 	Span* bigSpan = new Span;
 	void* ptr = SystemAlloc(PAGENUMS - 1);
-	bigSpan->_pageID = (PAGE_ID)ptr >> PAGE_SHIFT;		// è®¡ç®— Span çš„é¡µ ID ï¼
-	// è®¡ç®—æ–¹æ³•ï¼šé€šè¿‡åœ°å€ï¼ˆå€¼ï¼‰ / é¡µå¤§å°åŸºæœ¬å•ä½ï¼ˆ8kbï¼‰èŽ·å–åˆ°ç›¸å¯¹é¡µå·ï¼
-	bigSpan->_n = PAGENUMS - 1;							// æ–°èŽ·å–çš„é¡µå·ä¸€å®šåœ¨ç¬¬ 128 é¡µ
+	bigSpan->_pageID = (PAGE_ID)ptr >> PAGE_SHIFT;		// ¼ÆËã Span µÄÒ³ ID £¡
+	// ¼ÆËã·½·¨£ºÍ¨¹ýµØÖ·£¨Öµ£© / Ò³´óÐ¡»ù±¾µ¥Î»£¨8kb£©»ñÈ¡µ½Ïà¶ÔÒ³ºÅ£¡
+	bigSpan->_n = PAGENUMS - 1;							// ÐÂ»ñÈ¡µÄÒ³ºÅÒ»¶¨ÔÚµÚ 128 Ò³
 
-	_spanListPage[bigSpan->_n].PushFront(bigSpan);		// æŠŠæ–°é¡µæ”¾å…¥æ˜ å°„â€œé˜¶æ¢¯â€æ¡¶ä¸­
+	_spanListPage[bigSpan->_n].PushFront(bigSpan);		// °ÑÐÂÒ³·ÅÈëÓ³Éä¡°½×ÌÝ¡±Í°ÖÐ
 
 	return GetNewPage(npage);
+}
+
+Span* PageCache::MapObjectToSpan(void* ptr)
+{
+	PAGE_ID id = ((PAGE_ID)ptr >> PAGE_SHIFT);	// »ñÈ¡Ò³id
+	auto ret = _idSpanMap.find(id);				
+	// Í¨¹ýÓ³Éä¹ØÏµÕÒµ½¶ÔÓ¦µÄSpan
+	if (ret != _idSpanMap.end()) {
+		// ÕÒµ½ÁËÓ³Éä¶ÔÏó
+		return ret->second;						// ·µ»ØÓ³ÉäÕÒµ½µÄ Span
+	}
+	else {
+		//Ã»ÓÐÕÒµ½£ºÀíÂÛÉÏ²»¿ÉÄÜ³öÏÖ
+		assert(false);
+		return nullptr;
+	}
+
+	return nullptr;
+}
+
+/*
+*	Ò³ÕûÀíË¼Â·£º
+*		Í¨¹ýÇ°ºóËùËÑ£¬²éÕÒÒ³id
+*/
+
+void PageCache::ReleaseSpanToPageCache(Span* span)
+{
+	// ÏòÇ°ºÏ²¢£¡
+	while (1) {
+		PAGE_ID prevID = span->_pageID - 1;		// ÏòÇ°ËÑË÷Ò³ID
+		//¡¾Ò³ID¾ÍÊÇ¸ù¾ÝµØÖ·ÓëÉè¶¨µÄÒ³¹Ì¶¨¿é¹Ì¶¨´óÐ¡¼ÆËãËùµÃ¡¿
+		// -1£º¾ÍÊÇÏòÇ°ÒÆ¶¯Ò»¸öÒ³¹Ì¶¨¿é´óÐ¡µ¥Ôª
+
+		// ÔÚÓ³ÉäÖÐ²éÕÒÊÇ·ñ´æÔÚ£¡
+		auto ret = _idSpanMap.find(prevID);
+		if (ret == _idSpanMap.end()) break;		// Ã»ÕÒµ½£¬ËµÃ÷Ç°ÎÞÄÚ´æ
+
+		// ×ßµ½´Ë´¦£¬ËµÃ÷´æÔÚÁ¬ÐøÒ³£¬½áºÏ±»Ê¹ÓÃ×´Ì¬È·¶¨ÊÇ·ñ¿ÉºÏ²¢
+		Span* prevSpan = ret->second;			// »ñÈ¡µ½ Span
+		if (prevSpan->isUse == true) break;
+		// ËµÃ÷Ç°ÃæµÄÄÚ´æ´æÔÚ£¬µ«´¦ÓÚ±»Ê¹ÓÃ×´Ì¬ => ²»ÄÜºÏ²¢£¡
+
+		// ×¢Òâ£ºÅÐ¶ÏºÏ²¢µÄÒ³´óÐ¡£¬³¬¹ý128Ò³¾Í²»ÄÜºÏ²¢ÁË
+		if (prevSpan->_n + span->_n > PAGENUMS) break;
+
+		// µ½´Ë£¬½øÐÐÊµ¼ÊÒ³ºÏ²¢£¡
+		span->_pageID = prevSpan->_pageID;		// ¸üÐÂÒ³ID
+		span->_n += prevSpan->_n;				// ¼ÆËãÒ³´óÐ¡
+
+		_spanListPage[prevSpan->_n].Erase(prevSpan);
+		delete prevSpan;
+
+	}
+
+	// ÏòºóºÏ²¢
+	while (1)
+	{
+		PAGE_ID nextId = span->_pageID + span->_n;
+		auto ret = _idSpanMap.find(nextId);
+		if (ret == _idSpanMap.end())
+		{
+			break;
+		}
+
+		Span* nextSpan = ret->second;
+		if (nextSpan->isUse == true)
+		{
+			break;
+		}
+
+		if (nextSpan->_n + span->_n > PAGENUMS - 1)
+		{
+			break;
+		}
+
+		span->_n += nextSpan->_n;
+
+		_spanListPage[nextSpan->_n].Erase(nextSpan);
+		delete nextSpan;
+	}
+
+
+	_spanListPage[span->_n].PushFront(span);
+	span->isUse = false;
+	_idSpanMap[span->_pageID] = span;
+	_idSpanMap[span->_pageID + span->_n - 1] = span;
 }
