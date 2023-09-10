@@ -1,31 +1,33 @@
-#pragma once
+#pragma once 
 
-#include "Common.h"
-#include "ThreadCache.h"
+#include "Common.hpp"
 
-/*
-*	提供两个接口，使得每个线程可以用来申请释放空间，而不是在内部实现再加以封装
-*/
-
-static void* ConcurrentAlloc(size_t size) {
-	if (pTLSThreadCache == nullptr) {
-		pTLSThreadCache = new ThreadCache;
+// 单例模式：全局只要一个 PageCache！
+class PageCache {
+public:
+	static PageCache* GetInstance() {
+		return &_Instan;
 	}
 
-	//std::cout << std::this_thread::get_id() << " : " << pTLSThreadCache << std::endl;
+	/*
+	*	当CentralCache中对应的span桶中没有可用span（可用空间）时，PageCache分配一个新的！
+	*	param:
+	*		npage：分割的页数
+	*	作用：给CentralCache分配一个页的span
+	*/
+	Span* GetNewPage(size_t npage);
 
-	//return nullptr;
-	return pTLSThreadCache->Allocate(size);
-}
 
-static void ConcurrentFree(void* ptr, size_t size) {
-	assert(pTLSThreadCache);
-	pTLSThreadCache->Deallocate(ptr, size);
-}	SpanList _spanLists[NPAGES];
-	std::unordered_map<PAGE_ID, Span*> _idSpanMap;		// ��¼��ҳ�洢id��span��ӳ�䣡
-	static PageCache _sInstan;
+private:
+	SpanList _spanListPage[PAGENUMS];
 
+	// 构建一个页号和Span结构的映射 => 用于内存回收的页合并！
+	std::unordered_map<PAGE_ID, Span*> _idSpanMap;
+
+public:
+	std::mutex _pageMtx;
+private:
+	PageCache(){}
+	PageCache(const PageCache&) = delete;
+	static PageCache _Instan;
 };
-
-
-#endif
