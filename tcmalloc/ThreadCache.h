@@ -1,47 +1,35 @@
 #pragma once
 
-#include "Common.h"
+#include "Common.hpp"
+#include "CentralCache.h"
 
-
-
+/* ThreadCache ¶ÔÏó */
 class ThreadCache {
 public:
-	//ThreadCache() {}
-	// å†…å­˜ç®¡ç†ï¼šç”³è¯·å’Œé‡Šæ”¾ç©ºé—´
 	/*
-	*	å†…å­˜åˆ†é…ï¼š
-	*	param:
-	*		éœ€è¦çš„å†…å­˜å¤§å°
+	*	ÄÚ´æÉêÇë£ºÍ¨¹ı¹şÏ£Ëã·¨È¥ÌØ¶¨³¤¶ÈµÄ¡°ÄÚ´æ¶Î¡±×ÔÓÉÁ´±í»ñÈ¡ÄÚ´æ¿é
 	*/
 	void* Allocate(size_t size);
 
 	/*
-	*	å†…å­˜å›æ”¶ï¼š
-	*	param:
-	*		è¢«é‡Šæ”¾çš„åœ°å€
-	*		é‡Šæ”¾çš„å¤§å°
+	*	ÄÚ´æÊÍ·Å£ºÍ¨¹ı¹şÏ£Ëã·¨½«ÄÚ´æ¿é¹é»¹µ½Ó³Éäµ¥ÔªÖĞ
 	*/
 	void Deallocate(void* free_ptr, size_t size);
 
 	/*
-	*	å†…å­˜å—ç”³è¯·ï¼ˆå‘ä¸‹å±‚ï¼‰
+	*	ÄÚ´æÉêÇë => Èô¹şÏ£Ó³Éäµ½µÄ×ÔÓÉÁ´±í£¬ÎŞ¿ÉÓÃÄÚ´æ¿é£¡ÔòÏòÏÂÉêÇëÄÚ´æ£¡
 	*/
-	void* FetchFromContralCache(size_t index, size_t size);
+	void* FatchFromCentralCache(size_t index, size_t size);
 
 	/*
-	*	å¤„ç†å½’è¿˜å†…å­˜ä¸­å‡ºç°çš„å†…å­˜è¿‡å¤šï¼Œå–å‡ºä¸€éƒ¨åˆ†å‘ä¸‹é€’äº¤ï¼
+	*	ÄÚ´æÊÍ·Å => Èô¹şÏ£Ó³Éäµ½µÄ×ÔÓÉÁ´±í¹ı³¤£¬ÔòÏòÏÂ¹é»¹ÄÚ´æ£¡
 	*/
-	void ListTooLong(FreeList& list, size_t size);
-
+	void ReleaseBlockToCentralCache(FreeList& list, size_t size);
 private:
-	/* è‡ªç”±é“¾è¡¨é›†åˆ */
-	FreeList _freeListSet[MAXBLUCKET];
+	// Ó³Éä¹şÏ£Í°¡¾ÔªËØ£º×ÔÓÉÁ´±í¡¿
+	FreeList _freeListSet[BUCKETSIZE];
 };
 
 
-/* åˆ›å»º TLSï¼ˆçº¿ç¨‹å±€éƒ¨å­˜å‚¨ï¼‰ */
-// ä½¿å¾—æ¯ä¸€ä¸ªçº¿ç¨‹éƒ½æœ‰è‡ªå·±çš„ pTLSThreadCacheï¼Œ
-// å°½ç®¡æ˜¯å…¨å±€å£°æ˜çš„åŒåå˜é‡ï¼Œä½†æ˜¯å®é™…å¤šçº¿ç¨‹ä½¿ç”¨æ—¶éƒ½ä¼šæœ‰è‡ªå·±çš„ç»´æŠ¤
-// ä½¿ç”¨è¯¥æ–¹å¼ï¼šå®ç°æ¯ä¸ªçº¿ç¨‹è·å–çš„è‡ªå·±
-// static _declspec(thread) ThreadCache* pTLSThreadCache = nullptr;
-static thread_local ThreadCache* pTSThreadCache = nullptr;
+// ¶¨ÒåÏß³Ì¾ÖÓò±äÁ¿£¨Ã¿Ò»¸öÏß³Ì¶¼»á¾ßÓĞ£¡ÇÒ»¥²»¸ÉÈÅ£¡£©
+static thread_local ThreadCache* TLS_ptr = nullptr;
