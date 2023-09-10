@@ -1,5 +1,4 @@
-#ifndef _THREAD_CACHE_H_
-#define _THREAD_CACHE_H_
+#pragma once
 
 #include "Common.h"
 
@@ -44,7 +43,5 @@ private:
 // 使得每一个线程都有自己的 pTLSThreadCache，
 // 尽管是全局声明的同名变量，但是实际多线程使用时都会有自己的维护
 // 使用该方式：实现每个线程获取的自己
-static _declspec(thread) ThreadCache* pTLSThreadCache = nullptr;
-
-
-#endif 
+// static _declspec(thread) ThreadCache* pTLSThreadCache = nullptr;
+static thread_local ThreadCache* pTSThreadCache = nullptr;
