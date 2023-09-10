@@ -1,111 +1,111 @@
 #include "ThreadCache.h"
 
 /*
- *	å†…å­˜ç”³è¯·ï¼šé€šè¿‡å“ˆå¸Œç®—æ³•å»ç‰¹å®šé•¿åº¦çš„â€œå†…å­˜æ®µâ€è‡ªç”±é“¾è¡¨è·å–å†…å­˜å—
- *	ç”³è¯·æµç¨‹ï¼ˆé»˜è®¤çº¿ç¨‹ç¼“å­˜ï¼‰ï¼š
- *		1. æ ¹æ®å¯¹è±¡çš„å®é™…å¤§å° => å¯¹é½å¤§å°
- *		2. é€šè¿‡å“ˆå¸Œæ˜ å°„ => æ‰¾åˆ°è·å–å†…å­˜å—çš„æ¡¶
- *		3. åˆ¤æ–­æ¡¶ä¸­æ˜¯å¦æœ‰å¯ç”¨å†…å­˜ï¼šè‹¥æ— ï¼šåˆ™å‘CentralCacheè·å–ï¼
- *	å¯¹äºå†…å­˜çš„ç”³è¯·çº¦æŸï¼š
- */
-void *ThreadCache::Allocate(size_t size)
-{
+*	ÄÚ´æÉêÇë£ºÍ¨¹ı¹şÏ£Ëã·¨È¥ÌØ¶¨³¤¶ÈµÄ¡°ÄÚ´æ¶Î¡±×ÔÓÉÁ´±í»ñÈ¡ÄÚ´æ¿é
+*	ÉêÇëÁ÷³Ì£¨Ä¬ÈÏÏß³Ì»º´æ£©£º
+*		1. ¸ù¾İ¶ÔÏóµÄÊµ¼Ê´óĞ¡ => ¶ÔÆë´óĞ¡
+*		2. Í¨¹ı¹şÏ£Ó³Éä => ÕÒµ½»ñÈ¡ÄÚ´æ¿éµÄÍ°
+*		3. ÅĞ¶ÏÍ°ÖĞÊÇ·ñÓĞ¿ÉÓÃÄÚ´æ£ºÈôÎŞ£ºÔòÏòCentralCache»ñÈ¡£¡
+*	¶ÔÓÚÄÚ´æµÄÉêÇëÔ¼Êø£º
+*/
+void* ThreadCache::Allocate(size_t size) {
 
-	// ç”³è¯·çš„æœ€å¤§å†…å­˜é™åˆ¶
-	// assert(size <= MAXBTYES);
+	// ÉêÇëµÄ×î´óÄÚ´æÏŞÖÆ
+	//assert(size <= MAXBTYES);
 
-	if (size <= MAXBTYES)
-	{
-		// 1. è®¡ç®— size å¤§å°çš„æœ€å°å­˜å‚¨å†…å­˜æ®µï¼ˆå³å­˜å‚¨å¯¹è±¡æ—¶ï¼Œå†…å­˜æ± åˆ†é…çš„å†…å­˜å¤§å°ï¼‰
+	if (size <= MAXBTYES) {
+		// 1. ¼ÆËã size ´óĞ¡µÄ×îĞ¡´æ´¢ÄÚ´æ¶Î£¨¼´´æ´¢¶ÔÏóÊ±£¬ÄÚ´æ³Ø·ÖÅäµÄÄÚ´æ´óĞ¡£©
 		size_t alignSize = SizeClass::RoundUp(size);
 
-		// 2. è·å–å¯¹åº”çš„æ˜ å°„æ¡¶ç¼–å·
+		// 2. »ñÈ¡¶ÔÓ¦µÄÓ³ÉäÍ°±àºÅ
 		size_t index = SizeClass::Index(size);
-		// æµ‹è¯•è·å–çš„æ•°æ®
+		// ²âÊÔ»ñÈ¡µÄÊı¾İ
 		std::cout << "size : " << size << " ; alignSize : " << alignSize << " ; index : " << index << std::endl;
 
-		// 3. è·å–å†…å­˜å—ï¼
-		// æŸ¥çœ‹çº¿ç¨‹å¯¹åº”çš„è‡ªç”±é“¾è¡¨æ˜¯å¦æœ‰å¯ç”¨å†…å­˜
-		if (!_freeListSet[index].Empty())
-		{
-			// æœ‰å¯ç”¨å†…å­˜ï¼šé“¾è¡¨å¤´åˆ æ³• => åˆ†é…å†…å­˜
+		// 3. »ñÈ¡ÄÚ´æ¿é£¡
+		// ²é¿´Ïß³Ì¶ÔÓ¦µÄ×ÔÓÉÁ´±íÊÇ·ñÓĞ¿ÉÓÃÄÚ´æ
+		if (!_freeListSet[index].Empty()) {
+			// ÓĞ¿ÉÓÃÄÚ´æ£ºÁ´±íÍ·É¾·¨ => ·ÖÅäÄÚ´æ
 			return _freeListSet[index].Pop();
 		}
-		else
-		{
-			// æ— å¯ç”¨å†…å­˜ï¼šå‘CentralCacheè·å–
-			FatchFromCentralCache(index, size);
+		else {
+			// ÎŞ¿ÉÓÃÄÚ´æ£ºÏòCentralCache»ñÈ¡
+			return FatchFromCentralCache(index, size);
 		}
 	}
 
-	return nullptr;
+	//return nullptr;
+
 }
 
 /*
- *	å†…å­˜é‡Šæ”¾ï¼šé€šè¿‡å“ˆå¸Œç®—æ³•å°†å†…å­˜å—å½’è¿˜åˆ°æ˜ å°„å•å…ƒä¸­
- */
-void ThreadCache::Deallocate(void *free_ptr, size_t size)
-{
+*	ÄÚ´æÊÍ·Å£ºÍ¨¹ı¹şÏ£Ëã·¨½«ÄÚ´æ¿é¹é»¹µ½Ó³Éäµ¥ÔªÖĞ
+*/
+void ThreadCache::Deallocate(void* free_ptr, size_t size) {
 	assert(free_ptr);
 	assert(size <= MAXBTYES);
 
-	// å†…å­˜å½’è¿˜å°±æ˜¯æŠŠå†…å­˜å—æ’å…¥åˆ°ç‰¹å®šçš„æ¡¶ä¸­
-	size_t index = SizeClass::Index(size); // è·å–åˆ°æ¡¶çš„ç´¢å¼•
-	_freeListSet[index].Push(free_ptr);	   // å°†ç©ºé—²å†…å­˜å—æ’å…¥
+	// ÄÚ´æ¹é»¹¾ÍÊÇ°ÑÄÚ´æ¿é²åÈëµ½ÌØ¶¨µÄÍ°ÖĞ
+	size_t index = SizeClass::Index(size);			// »ñÈ¡µ½Í°µÄË÷Òı
+	_freeListSet[index].Push(free_ptr);				// ½«¿ÕÏĞÄÚ´æ¿é²åÈë
+
+	// ÅĞ¶Ï×ÔÓÉÁ´±í³¤¶È£¡¹ı³¤¾Í²¿·Ö¹é»¹¸øCentralCache
+	if (_freeListSet[index].GetSize() >= _freeListSet[index].MaxSize()) {
+		ReleaseBlockToCentralCache(_freeListSet[index], size);
+	}
+
 }
 
 /*
- *	å†…å­˜ç”³è¯· => è‹¥å“ˆå¸Œæ˜ å°„åˆ°çš„è‡ªç”±é“¾è¡¨ï¼Œæ— å¯ç”¨å†…å­˜å—ï¼åˆ™å‘ä¸‹ç”³è¯·å†…å­˜ï¼
- *	param:
- *		indexï¼šå¯¹åº”æ¡¶çš„åºå·
- *		sizeï¼šå®é™…å¯¹è±¡å¤§å°ï¼ˆéœ€æ±‚çš„å†…å­˜ï¼‰
- */
-void *ThreadCache::FatchFromCentralCache(size_t index, size_t size)
-{
+*	ÄÚ´æÉêÇë => Èô¹şÏ£Ó³Éäµ½µÄ×ÔÓÉÁ´±í£¬ÎŞ¿ÉÓÃÄÚ´æ¿é£¡ÔòÏòÏÂÉêÇëÄÚ´æ£¡
+*	param:
+*		index£º¶ÔÓ¦Í°µÄĞòºÅ
+*		size£ºÊµ¼Ê¶ÔÏó´óĞ¡£¨ĞèÇóµÄÄÚ´æ£©
+*/
+void* ThreadCache::FatchFromCentralCache(size_t index, size_t size) {
 
-// 1. ä½¿ç”¨æ…¢å¢é•¿ç­–ç•¥é™åˆ¶æ¯æ¬¡çš„å†…å­˜åˆ†é…æ•°é‡ï¼Œé˜²æ­¢ä¸€æ¬¡æ€§åˆ†é…è¿‡å¤šï¼Œä½†å®é™…åˆ©ç”¨ç‡ä½çš„å†…å­˜æµªè´¹
-#ifdef _WIN32
+	// 1. Ê¹ÓÃÂıÔö³¤²ßÂÔÏŞÖÆÃ¿´ÎµÄÄÚ´æ·ÖÅäÊıÁ¿£¬·ÀÖ¹Ò»´ÎĞÔ·ÖÅä¹ı¶à£¬µ«Êµ¼ÊÀûÓÃÂÊµÍµÄÄÚ´æÀË·Ñ
 	size_t limitMaxSize = min(_freeListSet[index].MaxSize(), SizeClass::LimitAllocNum(size));
-#else
-	size_t limitMaxSize = std::min(_freeListSet[index].MaxSize(), SizeClass::LimitAllocNum(size));
-
-#endif
-	// 2. åˆ¤æ–­è·å–å¤§çš„çº¦æŸå€¼æ˜¯å¦å’Œè‡ªç”±é“¾è¡¨çš„æœ€å¤§å¢é•¿çº¦æŸç›¸åŒï¼Œè‹¥ç›¸åŒï¼Œåˆ™æ…¢å¢é•¿ï¼šæå‡è‡ªç”±é“¾è¡¨çš„æœ€å¤§å¢é•¿çº¦æŸå€¼
-	if (limitMaxSize == _freeListSet[index].MaxSize())
-	{
+	
+	// 2. ÅĞ¶Ï»ñÈ¡´óµÄÔ¼ÊøÖµÊÇ·ñºÍ×ÔÓÉÁ´±íµÄ×î´óÔö³¤Ô¼ÊøÏàÍ¬£¬ÈôÏàÍ¬£¬ÔòÂıÔö³¤£ºÌáÉı×ÔÓÉÁ´±íµÄ×î´óÔö³¤Ô¼ÊøÖµ
+	if (limitMaxSize == _freeListSet[index].MaxSize()) {
 		_freeListSet[index].MaxSize()++;
 	}
 
-	// 3. è·å–å†…å­˜
-	void *start = nullptr;
-	void *end = nullptr;
-	// ä»CentralCacheä¸­è·å–å†…å­˜æ‰èƒ½å¯¹è±¡ï¼ˆåŠå®é™…è·å–çš„ä¸ªæ•°ï¼š?ï¼‰
-	// å‚æ•°ï¼šèµ·å§‹åœ°å€ã€ç»ˆæ­¢åœ°å€ã€æ…¢å¢é•¿è·å–çš„å†…å­˜å—æ•°çº¦æŸã€å®é™…å¯¹è±¡çš„å¤§å°ï¼ˆç”¨äºCentrealCacheå±‚æ‰¾åˆ°æ˜ å°„çš„æ¡¶ï¼šä¾¿äºè·å–å†…å­˜ï¼‰
+	// 3. »ñÈ¡ÄÚ´æ
+	void* start = nullptr;
+	void* end = nullptr;
+	// ´ÓCentralCacheÖĞ»ñÈ¡ÄÚ´æ²ÅÄÜ¶ÔÏó£¨¼°Êµ¼Ê»ñÈ¡µÄ¸öÊı£º?£©
+	// ²ÎÊı£ºÆğÊ¼µØÖ·¡¢ÖÕÖ¹µØÖ·¡¢ÂıÔö³¤»ñÈ¡µÄÄÚ´æ¿éÊıÔ¼Êø¡¢Êµ¼Ê¶ÔÏóµÄ´óĞ¡£¨ÓÃÓÚCentrealCache²ãÕÒµ½Ó³ÉäµÄÍ°£º±ãÓÚ»ñÈ¡ÄÚ´æ£©
 	size_t actualNum = CentralCache::GetInstance()->FetchRangeObj(start, end, limitMaxSize, size);
-	// startã€end æ˜¯è¾“å‡ºå‹ï¼ˆå¼•ç”¨ï¼‰å‚æ•°ï¼Œè®°å½•äº†CentralCacheåˆ†é…æ¥çš„å†…å­˜å—çš„èµ·å§‹å’Œç»ˆæ­¢å—çš„åœ°å€ï¼
+	// start¡¢end ÊÇÊä³öĞÍ£¨ÒıÓÃ£©²ÎÊı£¬¼ÇÂ¼ÁËCentralCache·ÖÅäÀ´µÄÄÚ´æ¿éµÄÆğÊ¼ºÍÖÕÖ¹¿éµÄµØÖ·£¡
 
 	assert(actualNum > 0);
 
-	// 4. å†…å­˜è½½å…¥ ThreadCache çš„è‡ªç”±é“¾è¡¨ä¸­
-	if (actualNum == 1)
-	{
-		// åªè·å–åˆ°ä¸€å—å†…å­˜ï¼
+	// 4. ÄÚ´æÔØÈë ThreadCache µÄ×ÔÓÉÁ´±íÖĞ
+	if (actualNum == 1) {
+		// Ö»»ñÈ¡µ½Ò»¿éÄÚ´æ£¡
 		assert(start == end);
 		return start;
 	}
-	else
-	{
-		// èŒƒå›´æ’å…¥
+	else {
+		// ·¶Î§²åÈë
 		_freeListSet[index].PushRange(GetNextObj(start), end, actualNum - 1);
 		return start;
 	}
 
-	// return nullptr;
+	//return nullptr;
 }
 
 /*
- *	å†…å­˜é‡Šæ”¾ => è‹¥å“ˆå¸Œæ˜ å°„åˆ°çš„è‡ªç”±é“¾è¡¨è¿‡é•¿ï¼Œåˆ™å‘ä¸‹å½’è¿˜å†…å­˜ï¼
- */
-void ThreadCache::ListTooLong(FreeList &list, size_t size)
-{
+*	ÄÚ´æÊÍ·Å => Èô¹şÏ£Ó³Éäµ½µÄ×ÔÓÉÁ´±í¹ı³¤£¬ÔòÏòÏÂ¹é»¹ÄÚ´æ£¡
+*/
+void ThreadCache::ReleaseBlockToCentralCache(FreeList& list, size_t size) {
+	void* start = nullptr;
+	void* end = nullptr;		// ÓÃÓÚ¼ÇÂ¼±íÊ¾Ê×Î²
+
+	list.PopRange(start, end, list.MaxSize());	// ·¶Î§ĞÔ´Ó freeList ÖĞ¼õÉÙÄÚ´æ¿é
+	// start¡¢end ÊÇÊä³öĞÍ²ÎÊı£¨ÒıÓÃ£©
+	
+	CentralCache::GetInstance()->ReleaseBlockToSpan(start, size);
 }
