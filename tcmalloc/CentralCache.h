@@ -3,25 +3,30 @@
 
 class CentralCache {
 public:
-	// å•ä¾‹æ¥å£
+	// µ¥Àı½Ó¿Ú
 	static CentralCache* GetInstance() {
 		return &_Instan;
 	}
 
 	/*
-	*	è·å–ä¸€ä¸ªéç©ºçš„ Span
-	*		CentralCacheä¸‹æ¯ä¸ªæ¡¶ä¸­çš„å•å…ƒå°±æ˜¯ Span é“¾è¡¨ï¼Œæ¯ä¸€ä¸ªSpanæŒ‚è½½ç€æ¡¶å¯¹åº”çš„å°å—å†…å­˜ï¼
-	*		ï¼ˆSpanç»“ç‚¹å¯èƒ½ä¸ºç©ºï¼ï¼‰
+	*	»ñÈ¡Ò»¸ö·Ç¿ÕµÄ Span
+	*		CentralCacheÏÂÃ¿¸öÍ°ÖĞµÄµ¥Ôª¾ÍÊÇ Span Á´±í£¬Ã¿Ò»¸öSpan¹ÒÔØ×ÅÍ°¶ÔÓ¦µÄĞ¡¿éÄÚ´æ£¡
+	*		£¨Span½áµã¿ÉÄÜÎª¿Õ£¡£©
 	*	param:
-	*		spanListï¼šæ‰€å¯¹åº”çš„ spanlist
-	*		sizeï¼šç”³è¯·çš„å¯¹è±¡å¤§å° => è®¡ç®—å¯¹åº”çš„æ¡¶
+	*		spanList£ºËù¶ÔÓ¦µÄ spanlist
+	*		size£ºÉêÇëµÄ¶ÔÏó´óĞ¡ => ¼ÆËã¶ÔÓ¦µÄÍ°
 	*/
 	Span* GetSpanToUse(SpanList& spanList, size_t size);
 
 	/*
-	*	ç»™ThreadCacheåˆ†é…ä¸€å®šæ•°é‡çš„å¯¹è±¡ï¼ˆï¼‰
+	*	¸øThreadCache·ÖÅäÒ»¶¨ÊıÁ¿µÄ¶ÔÏó£¨£©
 	*/
 	size_t FetchRangeObj(void*& start, void*& end, size_t batchNum, size_t size);
+
+	/*
+	*	ÄÚ´æ¹é»¹£º½«Ò»¶¨ÊıÁ¿µÄ¶ÔÏóÊÍ·Åµ½spanÖĞ
+	*/
+	void ReleaseBlockToSpan(void* start, size_t size);
 private:
 	SpanList _spanListSet[BUCKETSIZE];
 private:
