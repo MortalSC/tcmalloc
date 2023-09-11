@@ -1,17 +1,64 @@
 #include "Common.hpp"
 #include "ThreadCache.h"
+#include "PageCache.h"
 /*
-*	æä¾›ä¸¤ä¸ªæ¥å£ï¼Œä½¿å¾—æ¯ä¸ªçº¿ç¨‹å¯ä»¥ç”¨æ¥ç”³è¯·é‡Šæ”¾ç©ºé—´ï¼Œè€Œä¸æ˜¯åœ¨å†…éƒ¨å®ç°å†åŠ ä»¥å°è£…
+*	Ìá¹©Á½¸ö½Ó¿Ú£¬Ê¹µÃÃ¿¸öÏß³Ì¿ÉÒÔÓÃÀ´ÉêÇëÊÍ·Å¿Õ¼ä£¬¶ø²»ÊÇÔÚÄÚ²¿ÊµÏÖÔÙ¼ÓÒÔ·â×°
 */
 
 static void* Alloc(size_t size) {
-	if (TLS_ptr == nullptr) {
-		TLS_ptr = new ThreadCache;
+
+	if(size <= MAXBTYES){					// Ğ¡ÓÚ 256kb µÄÄÚ´æÉêÇë
+		if (TLS_ptr == nullptr) {
+
+			//TLS_ptr = new ThreadCache;
+			static ObjectPool<ThreadCache> tcPool;		// Ìæ»»Ô­Éú new
+			TLS_ptr = tcPool.New();
+
+		}
+		return TLS_ptr->Allocate(size);
 	}
-	return TLS_ptr->Allocate(size);
+	else {									// ´óÓÚ 256kb Ê±£¡
+		// 256kb / 8kb = 32 page£¬¿ÉÒÔÖ±½ÓÕÒ PageCache ÉêÇë£¡
+		// Ô¼Êø£º128 page * 8kb = 1024kb£¬´óÓÚ1024kb³¬³öPageCache¹ÜÀíµÄ×î´óÄÚ´æÒ³
+		// ¹ÊÁ½ÖÖÇéĞÎ£¡
+		// ÇéĞÎÒ»£º256kb <= size <= 1024kb £¬¿ÉÒÔÈ¥PageCache½øĞĞÄÚ´æÉêÇë£¡
+		// ÇéĞÎ¶ş£ºsize > 1024kb£¬È¥¶ÑÉêÇë£¡
+		
+		size_t alignSize = SizeClass::RoundUp(size);
+		size_t kpage = alignSize >> PAGE_SHIFT;
+		PageCache::GetInstance()->_pageMtx.lock();
+		Span* span = PageCache::GetInstance()->GetNewPage(kpage);
+		span->_objSize = size;
+		PageCache::GetInstance()->_pageMtx.unlock();                          
+		void* ptr = (void*)(span->_pageID << PAGE_SHIFT);
+		return ptr;
+
+		//if (size <= 1024 * 1024) {
+		//	// ÇéĞÎÒ»£º256kb <= size <= 1024kb
+		//}
+		//else {
+		//	// ÇéĞÎ¶ş£ºsize > 1024kb
+		//}
+	}
 }
 
-static void Dealloc(void* free_ptr, size_t size) {
+//static void Dealloc(void* free_ptr, size_t size) 
+/*
+	ÓÅ»¯·½Ê½Ò»£º¹¹½¨ÄÚ´æÒ³ºÅºÍ¶ÔÏó´óĞ¡µÄÓ³Éä£¨PageCache.h £º36ĞĞ£©
+	ÓÅ»¯·½Ê½¶ş£ºÔÚSpanÖĞÖ±½ÓÌí¼ÓÒ»¸öÁ¿¼ÇÂ¼´óĞ¡
+*/
+static void Dealloc(void* free_ptr)		// ¸Ä½ø³ÉÎŞĞè´«µİ´óĞ¡
+{
 	assert(free_ptr);
-	TLS_ptr->Deallocate(free_ptr, size);
+	Span* span = PageCache::GetInstance()->MapObjectToSpan(free_ptr);
+	size_t size = span->_objSize;
+	if (size > MAXBTYES) {
+		Span* span = PageCache::GetInstance()->MapObjectToSpan(free_ptr);
+		PageCache::GetInstance()->_pageMtx.lock();
+		PageCache::GetInstance()->ReleaseSpanToPageCache(span);
+		PageCache::GetInstance()->_pageMtx.unlock();
+	}else{
+		TLS_ptr->Deallocate(free_ptr, size);
+	}
+
 }
