@@ -1,6 +1,5 @@
 #include "Common.hpp"
 
-
 class CentralCache {
 public:
 	// µ¥Àý½Ó¿Ú
