@@ -32,6 +32,7 @@ Span* CentralCache::GetSpanToUse(SpanList& spanList, size_t size)
     PageCache::GetInstance()->_pageMtx.lock();
     Span* span = PageCache::GetInstance()->GetNewPage(SizeClass::GetToPageNum(size));
     span->isUse = true;
+    span->_objSize = size;              // 优化内存释放时的内存大小参数传递（去除）
     // 注：从PageCache获取的span是“页级”（没有规划出特定的【ThreadCache】内存块单元）
     PageCache::GetInstance()->_pageMtx.unlock();
 
