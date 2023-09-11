@@ -7,7 +7,21 @@ PageCache PageCache::_Instan;
 */
 Span* PageCache::GetNewPage(size_t npage)
 {
-	assert(npage > 0 && npage < PAGENUMS);
+	//assert(npage > 0 && npage < PAGENUMS);
+
+	// 判断页号！应对大内存问题：针对大内存的情形二！size > 1024kb【npage > 128】
+	if (npage > PAGENUMS - 1) {
+		// 向堆申请内存！
+		void* ptr = SystemAlloc(npage);
+
+		//Span* span = new Span;
+		Span* span = spanPool.New();						// 替换原生 new 
+
+		span->_pageID = (size_t)ptr >> PAGE_SHIFT;
+		span->_n = npage;
+		_idSpanMap[span->_pageID] = span;
+		return span;
+	}
 
 	// 1. 判断指定的页中是否有可用内存！
 	// 若没有，则顺序查看下一页直到遇到非空页 / 最后一页（无可用内存，向堆申请）
@@ -23,7 +37,8 @@ Span* PageCache::GetNewPage(size_t npage)
 			// 页上的内存操作规则：该页分成两部分：
 			// 第一部分：申请对象时需求的页大小 + 剩余大小（向前挂在到PageCache中的特定页上）
 			Span* prevSpan = _spanListPage[i].PopFront();		// 获取到页中内存块
-			Span* kSpan = new Span;
+			//Span* kSpan = new Span;
+			Span* kSpan = spanPool.New();						// 替换原生 new 
 
 			// 在prevSpan的头部切一个 npage 页下来
 			// npage 页 npage 返回
@@ -55,7 +70,10 @@ Span* PageCache::GetNewPage(size_t npage)
 	}
 
 	// 3. 到此位置，即：直到最后一页页没有可用空间，需要向相同申请新的大页：去找堆要一个128页的span
-	Span* bigSpan = new Span;
+	// 
+	//Span* bigSpan = new Span;
+	Span* bigSpan = spanPool.New();						// 替换原生 new 
+
 	void* ptr = SystemAlloc(PAGENUMS - 1);
 	bigSpan->_pageID = (PAGE_ID)ptr >> PAGE_SHIFT;		// 计算 Span 的页 ID ！
 	// 计算方法：通过地址（值） / 页大小基本单位（8kb）获取到相对页号！
@@ -69,6 +87,11 @@ Span* PageCache::GetNewPage(size_t npage)
 Span* PageCache::MapObjectToSpan(void* ptr)
 {
 	PAGE_ID id = ((PAGE_ID)ptr >> PAGE_SHIFT);	// 获取页id
+
+												
+	// 优化漏洞：只要访问到stl内的内容就应该加锁！因为stl是线程不安全的！
+	std::unique_lock<std::mutex> lock(_pageMtx);		// 基于 RAII 的设计思路：出了该函数，自动解锁！
+
 	auto ret = _idSpanMap.find(id);				
 	// 通过映射关系找到对应的Span
 	if (ret != _idSpanMap.end()) {
@@ -91,6 +114,17 @@ Span* PageCache::MapObjectToSpan(void* ptr)
 
 void PageCache::ReleaseSpanToPageCache(Span* span)
 {
+	// 判断页号！应对大内存问题：针对大内存的情形二！size > 1024kb【npage > 128】
+	// 超过 128 页 说明内存是直接找堆申请的！
+	if (span->_n > PAGENUMS - 1) {
+		void* ptr = (void*)(span->_pageID << PAGE_SHIFT);
+		SystemFree(ptr);
+
+		//delete span;
+		spanPool.Delete(span);					// 替换原生 delete
+		return;
+	}
+
 	// 向前合并！
 	while (1) {
 		PAGE_ID prevID = span->_pageID - 1;		// 向前搜索页ID
@@ -114,8 +148,9 @@ void PageCache::ReleaseSpanToPageCache(Span* span)
 		span->_n += prevSpan->_n;				// 计算页大小
 
 		_spanListPage[prevSpan->_n].Erase(prevSpan);
-		delete prevSpan;
 
+		//delete prevSpan;
+		spanPool.Delete(prevSpan);					// 替换原生 delete
 	}
 
 	// 向后合并
@@ -142,7 +177,9 @@ void PageCache::ReleaseSpanToPageCache(Span* span)
 		span->_n += nextSpan->_n;
 
 		_spanListPage[nextSpan->_n].Erase(nextSpan);
-		delete nextSpan;
+		
+		//delete nextSpan;
+		spanPool.Delete(nextSpan);					// 替换原生 delete
 	}
 
 
