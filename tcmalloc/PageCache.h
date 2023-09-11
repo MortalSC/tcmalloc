@@ -1,6 +1,8 @@
 #pragma once 
 
 #include "Common.hpp"
+#include "ObjectPool.h"
+
 
 // 单例模式：全局只要一个 PageCache！
 class PageCache {
@@ -31,11 +33,19 @@ private:
 
 	// 构建一个页号和Span结构的映射 => 用于内存回收的页合并！
 	std::unordered_map<PAGE_ID, Span*> _idSpanMap;
+	//// 构建一个页号和内存大小的映射 => 便于内存释放：优化掉之前设计的释放方式（需要给定对象大小）
+	//std::unordered_map<PAGE_ID, size_t> _idSizeMap;
+
+
+	// 使用定长内存池中的自定义内存申请释放替代原生new/malloc
+	ObjectPool<Span> spanPool;
+
 
 public:
 	std::mutex _pageMtx;
 private:
 	PageCache(){}
 	PageCache(const PageCache&) = delete;
+
 	static PageCache _Instan;
 };
