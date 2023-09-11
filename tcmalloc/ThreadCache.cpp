@@ -11,28 +11,28 @@
 void* ThreadCache::Allocate(size_t size) {
 
 	// 申请的最大内存限制
-	//assert(size <= MAXBTYES);
+	assert(size <= MAXBTYES);
 
-	if (size <= MAXBTYES) {
-		// 1. 计算 size 大小的最小存储内存段（即存储对象时，内存池分配的内存大小）
-		size_t alignSize = SizeClass::RoundUp(size);
+	// 1. 计算 size 大小的最小存储内存段（即存储对象时，内存池分配的内存大小）
+	size_t alignSize = SizeClass::RoundUp(size);
 
-		// 2. 获取对应的映射桶编号
-		size_t index = SizeClass::Index(size);
-		// 测试获取的数据
-		std::cout << "size : " << size << " ; alignSize : " << alignSize << " ; index : " << index << std::endl;
+	// 2. 获取对应的映射桶编号
+	size_t index = SizeClass::Index(size);
+	// 测试获取的数据
+	std::cout << "size : " << size << " ; alignSize : " << alignSize << " ; index : " << index << std::endl;
 
-		// 3. 获取内存块！
-		// 查看线程对应的自由链表是否有可用内存
-		if (!_freeListSet[index].Empty()) {
-			// 有可用内存：链表头删法 => 分配内存
-			return _freeListSet[index].Pop();
-		}
-		else {
-			// 无可用内存：向CentralCache获取
-			return FatchFromCentralCache(index, size);
-		}
+	// 3. 获取内存块！
+	// 查看线程对应的自由链表是否有可用内存
+	if (!_freeListSet[index].Empty()) {
+		// 有可用内存：链表头删法 => 分配内存
+		return _freeListSet[index].Pop();
 	}
+	else {
+		// 无可用内存：向CentralCache获取
+		return FatchFromCentralCache(index, size);
+	}
+	
+
 
 	//return nullptr;
 
