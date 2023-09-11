@@ -1,5 +1,5 @@
 #include "Alloc.h"
-#include "Common.hpp"
+
 using std::cout;
 using std::endl;
 
@@ -52,13 +52,20 @@ void TestConcurrentAlloc1()
 	cout << p7 << endl;
 
 
-	Dealloc(p1, 6);
-	Dealloc(p2, 8);
-	Dealloc(p3, 1);
-	Dealloc(p4, 7);
-	Dealloc(p5, 8);
-	Dealloc(p6, 8);
-	Dealloc(p7, 8);
+	//Dealloc(p1, 6);
+	//Dealloc(p2, 8);
+	//Dealloc(p3, 1);
+	//Dealloc(p4, 7);
+	//Dealloc(p5, 8);
+	//Dealloc(p6, 8);
+	//Dealloc(p7, 8);
+	Dealloc(p1);
+	Dealloc(p2);
+	Dealloc(p3);
+	Dealloc(p4);
+	Dealloc(p5);
+	Dealloc(p6);
+	Dealloc(p7);
 }
 
 void TestConcurrentAlloc2()
@@ -100,7 +107,8 @@ void MultiThreadAlloc1()
 
 	for (auto e : v)
 	{
-		Dealloc(e, 6);
+		//Dealloc(e, 6);
+		Dealloc(e);
 	}
 }
 
@@ -115,7 +123,9 @@ void MultiThreadAlloc2()
 
 	for (auto e : v)
 	{
-		Dealloc(e, 16);
+		//Dealloc(e, 16);
+		Dealloc(e);
+
 	}
 }
 
@@ -128,15 +138,36 @@ void TestMultiThread()
 	t2.join();
 }
 
-int main()
+
+/* 第五阶段：大内存（大于256kb）的内存申请 */
+void BigAlloc()
 {
-	//TestObjectPool();
-	//TLSTest();
+	void* p1 = Alloc(257 * 1024);
+	//Dealloc(p1, 257 * 1024);
+	Dealloc(p1);
 
-	TestConcurrentAlloc1();
-	//TestAddressShift();
 
-	//TestMultiThread();
+	void* p2 = Alloc(129 * 8 * 1024);
+	//Dealloc(p2, 129 * 8 * 1024);
+	Dealloc(p2);
 
-	return 0;
 }
+//
+//int main()
+//{
+//	//TestObjectPool();
+//
+//	//TLSTest();
+//
+//	//TestConcurrentAlloc1();
+//	// 
+//	//TestAddressShift();
+//
+//	//TestMultiThread();
+//
+//	//BigAlloc();
+//
+//
+//
+//	return 0;
+//}
